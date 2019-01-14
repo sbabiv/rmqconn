@@ -1,2 +1,2 @@
 # rmqconn
-RabbitMQ re-connection for Golang
+RabbitMQ Reconnection for Golang
