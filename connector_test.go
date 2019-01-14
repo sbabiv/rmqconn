@@ -89,7 +89,7 @@ func TestDial(t *testing.T) {
 }
 
 func TestTypes(t *testing.T) {
-	ch := &chann{c :new(amqp.Channel)}
+	ch := &chann{c: new(amqp.Channel)}
 	ch.GetChannel()
 	c := make(chan *amqp.Error)
 	ch.NotifyClose(c)
