@@ -54,7 +54,7 @@ func DialMock(url string) (Conner, error) {
 }
 
 func TestConn(t *testing.T) {
-	c, err := Open("amqp://", DialMock)
+	c, err := Open("amqp://host", DialMock)
 	if err == nil {
 		t.Fail()
 	}
@@ -77,19 +77,28 @@ func TestConn(t *testing.T) {
 	})
 	c.Close()
 
-	c, _ = Open("amqp://", DialMock)
+	c, _ = Open("amqp://host", DialMock)
 	c.Close()
 }
 
 func TestDial(t *testing.T) {
-	c, err := Dial("amqp://")
+	c, err := Dial("amqp://host")
 	if c != nil && err == nil {
 		t.Fail()
 	}
 }
 
+func Test_Close(t *testing.T) {
+	c, err := Open("amqp://host", Dial)
+	if err == nil {
+		t.Fail()
+	}
+
+	c.Close()
+}
+
 func TestTypes(t *testing.T) {
-	ch := &chann{c: new(amqp.Channel)}
+	ch := &chann{c :new(amqp.Channel)}
 	ch.GetChannel()
 	c := make(chan *amqp.Error)
 	ch.NotifyClose(c)

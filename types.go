@@ -31,7 +31,7 @@ func (ch *chann) NotifyClose(c chan *amqp.Error) chan *amqp.Error {
 	return ch.c.NotifyClose(c)
 }
 
-// Conner interface for wrapper Connection
+// Conner nterface for wrapper Connection
 type Conner interface {
 	Close() error
 	Channel() (Channer, error)

@@ -10,7 +10,6 @@ import (
 
 // Connecter interface for connection instance
 type Connecter interface {
-	Open(url string, dial func(string) (Conner, error)) (*Conn, error)
 	Do(f func(ch *amqp.Channel) error) error
 	IsСonnected() bool
 	Close() error
@@ -18,10 +17,10 @@ type Connecter interface {
 
 //Conn connect instance
 type Conn struct {
+	sync.Mutex
 	connection Conner
 	channel    Channer
 
-	done        chan struct{}
 	notifyClose chan *amqp.Error
 
 	isConnected int32
@@ -40,39 +39,34 @@ const (
 )
 
 var (
-	instance *Conn
-	once     sync.Once
-	openErr  error
-
-	//ErrNoConnection remote server is unavailable or network is down
-	ErrNoConnection = errors.New("no connection")
+	//ErrConnectionUnavailable remote server is unavailable or network is down
+	ErrConnectionUnavailable = errors.New("connection unavailable")
 )
 
 // Dial function wrapper amqp.Dial
 // For use amqp.DialConfig or amqp.DialTLS implement your func
 func Dial(url string) (Conner, error) {
 	c, err := amqp.Dial(url)
+
 	return &connWrapper{conn: c}, err
 }
 
-// Open safe for concurrent use by multiple goroutines. Creates a single connection once (singleton). And trying to connect
+// Creates connection and trying to connect
 // use Close method to stop connection attempts
-func Open(url string, dial func(string) (Conner, error)) (*Conn, error) {
-	once.Do(func() {
-		instance = &Conn{url: url, dial: dial}
-		openErr = instance.conn()
-		go func() {
-			instance.recon()
-		}()
-	})
+func Open(url string, dial func(string) (Conner, error)) (Connecter, error) {
+	instance := &Conn{url: url, dial: dial}
+	err := instance.conn()
+	go func(){
+		instance.recon()
+	}()
 
-	return instance, openErr
+	return instance, err
 }
 
 // Do return *amqp.Channel if instance connected
 func (conn *Conn) Do(f func(ch *amqp.Channel) error) error {
 	if atomic.LoadInt32(&conn.isConnected) != connected || conn.channel == nil {
-		return ErrNoConnection
+		return ErrConnectionUnavailable
 	}
 
 	return f(conn.channel.GetChannel())
@@ -85,21 +79,29 @@ func (conn *Conn) IsСonnected() bool {
 
 // Close re-conn attempts
 func (conn *Conn) Close() error {
+	var err error
+
 	isAlive := atomic.LoadInt32(&conn.isConnected)
-	if isAlive == closed || isAlive == disconnected {
-		return nil
+	if isAlive == closed {
+		return err
 	}
 
 	atomic.StoreInt32(&conn.isConnected, closed)
-	close(conn.done)
 
-	err := conn.channel.Close()
-	if err != nil {
-		return err
+	if conn.channel != nil {
+		err = conn.channel.Close()
+		if err != nil {
+			return err
+		}
 	}
-	err = conn.connection.Close()
+
+	if conn.connection != nil {
+		err = conn.connection.Close()
+	}
+
 	return err
 }
+
 
 func (conn *Conn) recon() {
 	for {
@@ -125,9 +127,10 @@ func (conn *Conn) recon() {
 		}
 
 		select {
-		case <-conn.done:
-			return
 		case <-conn.notifyClose:
+			if atomic.LoadInt32(&conn.isConnected) == closed {
+				return
+			}
 			atomic.StoreInt32(&conn.isConnected, disconnected)
 		}
 	}
@@ -147,7 +150,6 @@ func (conn *Conn) conn() error {
 	conn.connection = c
 	conn.channel = ch
 	conn.notifyClose = make(chan *amqp.Error)
-	conn.done = make(chan struct{})
 	conn.channel.NotifyClose(conn.notifyClose)
 
 	atomic.StoreInt32(&conn.isConnected, connected)
