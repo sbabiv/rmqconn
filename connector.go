@@ -102,7 +102,6 @@ func (conn *Conn) Close() error {
 	return err
 }
 
-
 func (conn *Conn) recon() {
 	for {
 		for {
