@@ -56,7 +56,7 @@ func Dial(url string) (Conner, error) {
 func Open(url string, dial func(string) (Conner, error)) (Connecter, error) {
 	instance := &Conn{url: url, dial: dial}
 	err := instance.conn()
-	go func(){
+	go func() {
 		instance.recon()
 	}()
 
