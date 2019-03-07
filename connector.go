@@ -51,7 +51,7 @@ func Dial(url string) (Conner, error) {
 	return &connWrapper{conn: c}, err
 }
 
-// Creates connection and trying to connect
+// Open creates connection and trying to connect
 // use Close method to stop connection attempts
 func Open(url string, dial func(string) (Conner, error)) (Connecter, error) {
 	instance := &Conn{url: url, dial: dial}
