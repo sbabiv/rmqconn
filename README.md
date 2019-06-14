@@ -30,18 +30,24 @@ dep ensure -add github.com/sbabiv/rmqconn
 #### 2. use it
 
 ```Go
-conn, err := rmqconn.Open("amqp://", rmqconn.Dial)
+conn, err := rmqconn.Open("amqp://usr:pwd@host:5672", rmqconn.Dial)
 defer conn.Close()
 
 if err != nil {
-  return
+    return
 }
 
-err = conn.Do(func(ch *amqp.Channel) error {
-  return ch.Publish("", "queueName", false, false, amqp.Publishing{
-    Body: []byte("hello wolrd"),
-  })
-})
+if conn.IsConnected() {
+    ch, err := conn.GetChannel()
+    if err != nil {
+        return
+    }
+    defer ch.Close()
+
+    err = ch.Publish("", "queueName", false, false, amqp.Publishing{
+        Body: []byte("hello wolrd"),
+    })
+}
   ```
 ## Licence
 [MIT](https://opensource.org/licenses/MIT)
