@@ -12,94 +12,76 @@ var (
 	attempts int32
 )
 
-type channMock struct {
+type connMock struct {
 	с chan *amqp.Error
 }
 
-func (ch *channMock) Close() error {
-	close(ch.с)
-	return nil
-}
-
-func (ch *channMock) NotifyClose(c chan *amqp.Error) chan *amqp.Error {
-	ch.с = c
-
-	return nil
-}
-
-func (ch *channMock) GetChannel() *amqp.Channel {
-	return new(amqp.Channel)
-}
-
-type connMock struct {
-}
-
 func (c *connMock) Close() error {
+	close(c.с)
 	return nil
 }
 
-func (c *connMock) Channel() (Channer, error) {
-	if atomic.LoadInt32(&attempts) == 3 {
-		return new(channMock), nil
-	}
-	return new(channMock), fmt.Errorf("get chan err")
+func (c *connMock) NotifyClose(ch chan *amqp.Error) chan *amqp.Error {
+	c.с = ch
+	return nil
+}
+
+func (c *connMock) GetChannel() (*amqp.Channel, error) {
+	return new(amqp.Channel), nil
+}
+
+func (c *connMock) Disconnect() {
+	close(c.с)
 }
 
 func DialMock(url string) (Conner, error) {
 	defer atomic.AddInt32(&attempts, 1)
-	if atomic.LoadInt32(&attempts) <= 2 {
-		return new(connMock), nil
+
+	if atomic.LoadInt32(&attempts) == 0 {
+		conn := &connMock{make(chan *amqp.Error)}
+		go func() {
+			time.Sleep(time.Millisecond * 100)
+			conn.Disconnect()
+		}()
+		return conn, nil
 	}
-	return new(connMock), fmt.Errorf("dial err")
+
+	if atomic.LoadInt32(&attempts) <= 1 {
+		return nil, fmt.Errorf("dial err")
+	} else {
+		return &connMock{make(chan *amqp.Error)}, nil
+	}
 }
 
-func TestConn(t *testing.T) {
+func TestReconn(t *testing.T) {
 	c, err := Open("amqp://host", DialMock)
-	if err == nil {
-		t.Fail()
-	}
-	time.Sleep(time.Second * 3)
-
-	err = c.Do(func(ch *amqp.Channel) error {
-		return nil
-	})
-
 	if err != nil {
 		t.Fail()
 	}
-	if !c.IsСonnected() {
+	if !c.IsConnected() {
 		t.Fail()
+	} else {
+		_, err := c.GetChannel()
+		if err != nil {
+			t.Fail()
+		}
 	}
 
+	time.Sleep(time.Second * 3)
+
 	c.Close()
-	c.Do(func(ch *amqp.Channel) error {
-		return nil
-	})
 	c.Close()
 
-	c, _ = Open("amqp://host", DialMock)
-	c.Close()
+	_, err = c.GetChannel()
+	if err == nil {
+		t.Fail()
+	}
 }
 
 func TestDial(t *testing.T) {
-	c, err := Dial("amqp://host")
-	if c != nil && err == nil {
-		t.Fail()
-	}
-}
-
-func Test_Close(t *testing.T) {
 	c, err := Open("amqp://host", Dial)
 	if err == nil {
 		t.Fail()
 	}
-
 	c.Close()
-}
-
-func TestTypes(t *testing.T) {
-	ch := &chann{c: new(amqp.Channel)}
-	ch.GetChannel()
-	c := make(chan *amqp.Error)
-	ch.NotifyClose(c)
 }
