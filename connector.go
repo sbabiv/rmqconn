@@ -75,8 +75,6 @@ func (conn *Conn) Close() error {
 	conn.Lock()
 	defer conn.Unlock()
 
-	var err error
-
 	if atomic.LoadInt32(&conn.isConnected) == closed {
 		return ErrClose
 	}
@@ -85,10 +83,10 @@ func (conn *Conn) Close() error {
 	close(conn.done)
 
 	if conn.connection != nil {
-		err = conn.connection.Close()
+		return conn.connection.Close()
 	}
 
-	return err
+	return nil
 }
 
 func (conn *Conn) GetChannel() (*amqp.Channel, error) {
