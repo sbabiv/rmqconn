@@ -9,12 +9,6 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Connecter interface for connection instance
-type Connecter interface {
-	GetChannel() (*amqp.Channel, error)
-	IsConnected() bool
-	Close() error
-}
 
 //Conn connect instance
 type Conn struct {

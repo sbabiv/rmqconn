@@ -11,6 +11,13 @@ type Conner interface {
 	GetChannel() (*amqp.Channel, error)
 }
 
+// Connecter interface for connection instance
+type Connecter interface {
+	GetChannel() (*amqp.Channel, error)
+	IsConnected() bool
+	Close() error
+}
+
 type connWrapper struct {
 	conn *amqp.Connection
 }
