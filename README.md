@@ -20,13 +20,6 @@ You can implement your connection function and pass it to `rmqconn.Open("", cust
 go get -u github.com/sbabiv/rmqconn
 ```
 
-Or, using dep:
-
-``` sh
-dep ensure -add github.com/sbabiv/rmqconn
-```
-
-
 #### 2. use it
 
 ```Go
